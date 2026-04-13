@@ -3,8 +3,7 @@ export async function apiFetch(
   token: string,
   options: RequestInit = {}
 ): Promise<unknown> {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? "";
-  const res = await fetch(`${base}${path}`, {
+  const res = await fetch(`/api/gatekeeper${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
