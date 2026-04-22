@@ -10,16 +10,24 @@ import Spinner from "react-bootstrap/Spinner";
 import { apiFetch } from "@/lib/api";
 import { AUTH_PROVIDER_ID, REFRESH_TOKEN_ERROR } from "@/lib/constants";
 import DoorCard, { type Door, type DoorStatus } from "@/components/DoorCard";
+import { useRouter } from "next/navigation";
 
 export default function DoorsPage() {
-  const { data: session } = useSession({
-    required: true,
+  const { data: session, status } = useSession({
+  required: true,
     onUnauthenticated() {
       signIn(AUTH_PROVIDER_ID);
     },
   });
+  const router = useRouter();
   const token = session?.accessToken ?? "";
   const sessionError = session?.error;
+
+  useEffect(() => {
+    if (status !== "loading" && !session) {
+      router.replace("/unauthorized");
+    }
+  }, [status, session, router]);
 
   useEffect(() => {
     if (sessionError === REFRESH_TOKEN_ERROR) {
@@ -32,7 +40,7 @@ export default function DoorsPage() {
   const [loadingDoors, setLoadingDoors] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState<Record<string, boolean>>({});
-
+  
   // Stable ref so fetchStatuses doesn't change identity on token refresh
   const tokenRef = useRef(token);
   tokenRef.current = token;
@@ -135,6 +143,25 @@ export default function DoorsPage() {
       setUnlocking((prev) => ({ ...prev, [doorId]: false }));
     }
   };
+
+  if (status === "loading" || !session) {
+    return (
+      <Container className="mt-5 text-center">
+        <Spinner animation="border" />
+      </Container>
+    );
+  }
+
+  const allowed = session?.groups?.includes("rtp");
+  if (!allowed) {
+    return (
+      <Container className="py-5 text-center text-muted">
+        <h4>Access Denied</h4>
+        <p>You must be an RTP to view this page.</p>
+      </Container>
+    );
+  }
+
 
   if (loadingDoors) {
     return (

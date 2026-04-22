@@ -1,4 +1,4 @@
-@import 'csh-material-bootstrap/dist/csh-material-bootstrap.css';
+@import 'csh-material-bootstrap/css';
 
 .navbar .dropdown-toggle {
   display: flex !important;
@@ -8,4 +8,11 @@
 
 .navbar .dropdown-toggle::after {
   border-top-color: white;
+}
+
+.datepicker-controls .btn {
+  text-transform: none;
+  font-weight: normal;
+  border-bottom: none;
+  box-shadow: none;
 }

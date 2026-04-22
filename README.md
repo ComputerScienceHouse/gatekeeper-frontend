@@ -1,15 +1,17 @@
 # gatekeeper-frontend
 
-Web interface for [gatekeeper-mqtt](https://github.com/ComputerScienceHouse/gatekeeper-mqtt). Lets CSH members view door status and trigger unlocks from a browser.
+Web interface for [gatekeeper-mqtt](https://github.com/ComputerScienceHouse/gatekeeper-mqtt). Lets CSH members view door status and trigger unlocks, and RTPs browse access logs, from a browser.
 
 Built with Next.js 15, next-auth v5 (CSH SSO), react-bootstrap, and [csh-material-bootstrap](https://github.com/ComputerScienceHouse/csh-material-bootstrap).
 
 ## Features
-
+### Doors
 - **Doors dashboard** — live online/offline status for all doors, updated every 30 seconds
 - **Unlock** — send an unlock command to any door with a single click
-- **CSH SSO auth** — login via CSH's OpenID Connect provider; tokens are refreshed automatically
 - **Access feedback** — door-specific error messages on 403 (e.g. safety seminar, RTP status)
+
+### Logs
+- **Access logs** — log viewer for door access events
 
 ## Prerequisites
 
@@ -36,6 +38,8 @@ Edit `.env.local`:
 The OIDC client must have `http://localhost:3000/api/auth/callback/csh` in its allowed redirect URIs (replace `localhost:3000` with your deployment URL in production).
 
 ## Development
+
+Note: For developing new features or fixes, refer to the [gatekeeper-mqtt API docs](https://github.com/ComputerScienceHouse/gatekeeper-mqtt/blob/main/docs.org) for available endpoints.
 
 ```bash
 npm run dev
