@@ -52,16 +52,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     jwt({ token, account, profile }) {
-      if (account) {
-        return {
-          ...token,
-          accessToken: account.access_token,
-          refreshToken: account.refresh_token,
-          expiresAt: account.expires_at,
-          username: (profile as Record<string, unknown>)?.preferred_username as string | undefined,
-          error: undefined,
-        };
-      }
+          if (account) {
+            const payload = JSON.parse(
+              Buffer.from((account as any).access_token.split(".")[1], "base64").toString()
+            );
+            return {
+              ...token,
+              accessToken: account.access_token,
+              refreshToken: account.refresh_token,
+              idToken: account.id_token,
+              expiresAt: account.expires_at,
+              username: (profile as any)?.preferred_username,
+              groups: payload.groups ?? [],
+              error: undefined,
+            };
+          }
 
       if (token.expiresAt && Date.now() < token.expiresAt * 1000) {
         return token;
@@ -73,6 +78,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.accessToken = token.accessToken as string;
       session.error = token.error as string | undefined;
       session.username = token.username;
+      session.groups = token.groups ?? [];
+      session.idToken = token.idToken as string;
       return session;
     },
   },
