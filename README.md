@@ -13,6 +13,15 @@ Built with Next.js 15, next-auth v5 (CSH SSO), react-bootstrap, and [csh-materia
 ### Logs
 - **Access logs** — log viewer for door access events
 
+### Keys
+- **Keys Management** — Disable/Delete user keys using a simple lookup
+
+### AccessGate
+- Enforce RTPs to state a reason in order to access Keys/Logs page
+
+### Audit
+- **Audit Logs** — log viewer for page access events
+
 ## Prerequisites
 
 - Node.js 20+

@@ -10,6 +10,8 @@ import { AUTH_PROVIDER_ID, REFRESH_TOKEN_ERROR } from "@/lib/constants";
 import { useSession, signIn } from "next-auth/react";
 import type DateRangePicker from "vanillajs-datepicker/DateRangePicker";
 import "vanillajs-datepicker/css/datepicker-bs5.css";
+import AuthGate from "@/components/AuthGate";
+import AccessGate from "@/components/AccessGate";
 
 interface LogEntry {
   _id: string;
@@ -20,6 +22,7 @@ interface LogEntry {
   name: string | null;
   doorsId: string;
   keyId: string;
+  uid?: string | null;
   granted: boolean;
 }
 
@@ -70,23 +73,38 @@ function formatTimestamp(iso: string): string {
   });
 }
 
-async function fetchLogs(token: string, cursor?: string, since?: string, until?: string): Promise<LogsResponse> {
+async function fetchLogs(
+  token: string,
+  cursor?: string,
+  since?: string,
+  until?: string,
+  search?: string,
+  door?: string,
+  granted?: string
+): Promise<LogsResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
-  if (since)  params.set("since", since);
-  if (until)  params.set("until", until);
-  console.log("fetchLogs params:", params.toString());
+  if (since) params.set("since", since);
+  if (until) params.set("until", until);
+  if (search) params.set("search", search);
+  if (door && door !== "all") params.set("door", door);
+  if (granted && granted !== "all") params.set("granted", granted);
   return apiFetch(`/admin/logs?${params}`, token) as Promise<LogsResponse>;
 }
-export default function LogsPage() {
-  const { data: session, status } = useSession({
-    required: true,
-    onUnauthenticated() { signIn(AUTH_PROVIDER_ID); },
-  });
+
+async function fetchDoors(token: string): Promise<string[]> {
+  return apiFetch(`/admin/logs/doors`, token) as Promise<string[]>;
+}
+
+function LogsPageInner() {
+  const { data: session } = useSession();
+  const [granted, setGranted] = useState(false);
   const [logs,        setLogs]        = useState<LogEntry[]>([]);
+  const [doors,       setDoors]       = useState<string[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
   const [search,      setSearch]      = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [grantFilter, setGrantFilter] = useState<"all" | "granted" | "denied">("all");
   const [doorFilter,  setDoorFilter]  = useState("all");
   const [sinceDate,   setSinceDate]   = useState(defaultSinceDate());
@@ -101,8 +119,14 @@ export default function LogsPage() {
   const endInputRef = useRef<HTMLInputElement>(null);
   const rangepickerRef = useRef<DateRangePicker | null>(null);
 
+  // debounce search input -> search
   useEffect(() => {
-    if (!rangeElRef.current) return;
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (!granted || !rangeElRef.current) return;
 
     let cancelled = false;
 
@@ -139,18 +163,24 @@ export default function LogsPage() {
       rangepickerRef.current = null;
     };
 
-  }, [status]);
+  }, [granted]);
 
   useEffect(() => {
     if (sessionError === REFRESH_TOKEN_ERROR) signIn(AUTH_PROVIDER_ID);
   }, [sessionError]);
+
+  useEffect(() => {
+    if (!granted || !token) return;
+    fetchDoors(token).then(setDoors).catch((e) => console.error(e));
+  }, [granted, token]);
+
   const loadPage = useCallback(async (idx: number, cursor: string | null, silent = false) => {
     if (!token) return;
     silent ? setRefreshing(true) : setLoading(true);
     try {
       const since = toIso(sinceDate, false);
       const until = toIso(untilDate, true);
-      const data = await fetchLogs(token, cursor ?? undefined, since, until);
+      const data = await fetchLogs(token, cursor ?? undefined, since, until, search, doorFilter, grantFilter);
       setLogs(data.logs);
       setNextCursor(data.cursor);
       setPageIndex(idx);
@@ -167,32 +197,16 @@ export default function LogsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, sinceDate, untilDate]);
+  }, [token, sinceDate, untilDate, search, doorFilter, grantFilter]);
 
+  // reset to page 0 and refetch whenever any filter changes
   useEffect(() => {
+    if (!granted) return;
     setCursorStack([null]);
     setPageIndex(0);
     setNextCursor(null);
     loadPage(0, null);
-  }, [loadPage]);
-  if (status === "loading") {
-    return (
-      <Container className="py-5 d-flex justify-content-center">
-        <Spinner animation="border" variant="primary" />
-      </Container>
-    );
-  }
-
-  //TBH, this should a global thing.
-  const allowed = session?.groups?.includes("rtp");
-      if (!allowed) {
-        return (
-          <Container className="py-5 text-center text-muted">
-            <h4>Access Denied</h4>
-            <p>You must be an RTP to view this page.</p>
-          </Container>
-        );
-      }
+  }, [loadPage, granted]);
 
   const hasPrev = pageIndex > 0;
   const hasNext = nextCursor !== null;
@@ -203,25 +217,6 @@ export default function LogsPage() {
     const nextIdx = pageIndex + 1;
     loadPage(nextIdx, cursorStack[nextIdx] ?? nextCursor);
   };
-  
-
-  const uniqueDoors = Array.from(new Set(logs.map((l) => l.doorName ?? l.door))).sort();
-
-  const filtered = logs.filter((l) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      q === "" ||
-      (l.doorName ?? l.door).toLowerCase().includes(q) ||
-      (l.username ?? "").toLowerCase().includes(q) ||
-      (l.name ?? "").toLowerCase().includes(q);
-    const matchGrant =
-      grantFilter === "all" ||
-      (grantFilter === "granted" && l.granted) ||
-      (grantFilter === "denied" && !l.granted);
-    const matchDoor =
-      doorFilter === "all" || (l.doorName ?? l.door) === doorFilter;
-    return matchSearch && matchGrant && matchDoor;
-  });
 
   const PaginationControls = () => (
     <ul className="pagination pagination-sm justify-content-center mb-0">
@@ -234,15 +229,20 @@ export default function LogsPage() {
     </ul>
   );
 
+  if (!granted) {
+    return (
+      <AccessGate
+        endpoint="/admin/logs/access"
+        token={token}
+        onGranted={() => setGranted(true)}
+      />
+    );
+  }
+
   return (
     <Container fluid className="py-4">
 
       <Row className="mb-4 align-items-center">
-        <Col>
-          <h2 className="mb-0">Access Logs</h2>
-          <p className="text-muted mb-0 mt-1">Big Brother is watching</p>
-        </Col>
-        
         <Col xs="auto">
           <Button
             variant="outline-dark"
@@ -263,8 +263,8 @@ export default function LogsPage() {
               type="text"
               className="form-control"
               placeholder="Search door, username, or name…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
         </div>
@@ -278,7 +278,7 @@ export default function LogsPage() {
         <div className="col-6 col-md-2 mb-2 mb-md-0">
           <select className="form-select" value={doorFilter} onChange={(e) => setDoorFilter(e.target.value)}>
             <option value="all">All doors</option>
-            {uniqueDoors.map((d) => <option key={d} value={d}>{d}</option>)}
+            {doors.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
 
@@ -300,19 +300,11 @@ export default function LogsPage() {
             />
           </div>
         </div>
-
-        {(search || grantFilter !== "all" || doorFilter !== "all") && (
-          <div className="col-auto mt-2 mt-md-0">
-            <button className="btn btn-outline-primary" onClick={() => { setSearch(""); setGrantFilter("all"); setDoorFilter("all"); }}>
-              Clear
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <span><Icon path={mdiHistory} size={0.85} className="me-2" />Events</span>
+          <span><Icon path={mdiHistory} size={0.85} className="me-2" />Logs</span>
         </div>
         <div className="card-body py-2 border-bottom">
           <PaginationControls />
@@ -323,12 +315,20 @@ export default function LogsPage() {
             <Spinner animation="border" variant="primary" />
             <span className="ms-3 text-muted">Loading</span>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : logs.length === 0 ? (
           <div className="card-body text-center py-5 text-muted">
             <Icon path={mdiHistory} size={2} className="mb-3 opacity-25 d-block mx-auto" />
             <p className="mb-0">No log entries match your filters.</p>
             {(search || grantFilter !== "all" || doorFilter !== "all") && (
-              <button className="btn btn-link btn-sm mt-2" onClick={() => { setSearch(""); setGrantFilter("all"); setDoorFilter("all"); }}>
+              <button
+                className="btn btn-link btn-sm mt-2"
+                onClick={() => {
+                  setSearchInput("");
+                  setSearch("");
+                  setGrantFilter("all");
+                  setDoorFilter("all");
+                }}
+              >
                 Clear filters
               </button>
             )}
@@ -342,20 +342,30 @@ export default function LogsPage() {
                   <th style={{ width: "22%" }}>Door</th>
                   <th style={{ width: "22%" }}>Username</th>
                   <th style={{ width: "18%" }}>Name</th>
+                  <th style={{ width: "15%" }}>Keys</th>
                   <th style={{ width: "10%" }}>Access</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((entry) => (
-                  <tr key={entry._id} className={entry.granted ? "table-success" : "table-danger"}>
+                {logs.map((entry) => (
+                  <tr key={entry._id}>
                     <td style={{ whiteSpace: "nowrap" }}>{formatTimestamp(entry.timestamp)}</td>
                     <td>
                       {entry.doorName ?? <span className="font-monospace text-muted">{entry.door}</span>}
                     </td>
                     <td>
-                      {entry.username ?? <span className="fst-italic text-muted">unknown</span>}
+                      {entry.username ?? <span className="text-muted">unknown</span>}
                     </td>
-                    <td>{entry.name ?? <span className="fst-italic text-muted">—</span>}</td>
+                    <td>{entry.name ?? <span className="text-muted">-</span>}</td>
+                    <td>
+                      {entry.uid === undefined ? (
+                        <span>-</span>
+                      ) : entry.uid === null ? (
+                        "Mobile Key"
+                      ) : (
+                        <span className="font-monospace small">{entry.uid}</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`badge rounded-pill ${entry.granted ? "text-bg-success" : "text-bg-danger"}`}>
                         <Icon path={entry.granted ? mdiCheckCircle : mdiCloseCircle} size={0.55} className="me-1" />
@@ -374,8 +384,7 @@ export default function LogsPage() {
           style={{ gridTemplateColumns: "1fr auto 1fr" }}
         >
           <small className="text-muted">
-            Page {pageIndex + 1} &nbsp;·&nbsp; {filtered.length} entr{filtered.length !== 1 ? "ies" : "y"}
-            {filtered.length !== logs.length && ` (filtered from ${logs.length})`}
+            Page {pageIndex + 1} &nbsp;
           </small>
           <div className="justify-self-center">
             <PaginationControls />
@@ -384,5 +393,13 @@ export default function LogsPage() {
         </div>
       </div>
     </Container>
+  );
+}
+
+export default function LogsPage() {
+  return (
+    <AuthGate>
+      <LogsPageInner />
+    </AuthGate>
   );
 }
