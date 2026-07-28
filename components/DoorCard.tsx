@@ -26,6 +26,7 @@ interface DoorCardProps {
   status: DoorStatus | undefined;
   onUnlock: (doorId: string) => void;
   loading?: boolean;
+  offline?: boolean;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -40,6 +41,7 @@ export default function DoorCard({
   status,
   onUnlock,
   loading = false,
+  offline = false
 }: DoorCardProps) {
   const guess = status?.guess ?? "unknown";
   const color = STATUS_COLOR[guess] ?? STATUS_COLOR.unknown;
@@ -79,7 +81,7 @@ export default function DoorCard({
             variant="primary"
             className="ms-3 flex-shrink-0"
             onClick={() => onUnlock(door.id)}
-            disabled={loading}
+            disabled={loading || offline}
           >
             {loading ? (
               <>

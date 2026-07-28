@@ -9,8 +9,9 @@ import Col from "react-bootstrap/Col";
 import Spinner from "react-bootstrap/Spinner";
 import { apiFetch } from "@/lib/api";
 import DoorCard, { type Door, type DoorStatus } from "@/components/DoorCard";
+import AuthGate from "@/components/AuthGate";
 
-export default function DoorsPage() {
+function DoorsPageInner() {
   const { data: session } = useSession();
   const token = session?.accessToken ?? "";
 
@@ -152,6 +153,7 @@ export default function DoorsPage() {
               status={statuses[door.id]}
               onUnlock={handleUnlock}
               loading={unlocking[door.id] ?? false}
+              offline={statuses[door.id]?.guess === "offline"}
             />
           </Col>
         ))}
@@ -167,6 +169,7 @@ export default function DoorsPage() {
                   status={statuses[door.id]}
                   onUnlock={handleUnlock}
                   loading={false}
+                  offline={statuses[door.id]?.guess === "offline"}
                 />
               </Col>
             ))}
@@ -174,5 +177,13 @@ export default function DoorsPage() {
         </>
       )}
     </Container>
+  );
+}
+
+export default function DoorsPage() {
+  return (
+    <AuthGate>
+      <DoorsPageInner />
+    </AuthGate>
   );
 }
