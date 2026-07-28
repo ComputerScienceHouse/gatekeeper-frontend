@@ -3,9 +3,9 @@
 import { Container, Spinner } from "react-bootstrap";
 import { useSession, signIn } from "next-auth/react";
 import { AUTH_PROVIDER_ID, REFRESH_TOKEN_ERROR } from "@/lib/constants";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
-export default function AuthGate({ children }) {
+export default function AuthGate({ children }: {children: ReactNode}) {
   const { data: session, status } = useSession({
     required: true,
     onUnauthenticated() {
