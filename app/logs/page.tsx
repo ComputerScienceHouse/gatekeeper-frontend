@@ -358,7 +358,7 @@ function LogsPageInner() {
                     </td>
                     <td>{entry.name ?? <span className="text-muted">-</span>}</td>
                     <td>
-                      {entry.keyId === "Remote Access" ? (
+                      {entry.keyId === null ? (
                         "Remote Access"
                       ) : entry.uid === undefined ? (
                         <span>-</span>
