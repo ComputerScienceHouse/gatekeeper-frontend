@@ -20,7 +20,7 @@ function DoorsPageInner() {
   const [loadingDoors, setLoadingDoors] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState<Record<string, boolean>>({});
-  
+
   // Stable ref so fetchStatuses doesn't change identity on token refresh
   const tokenRef = useRef(token);
   tokenRef.current = token;
@@ -45,7 +45,10 @@ function DoorsPageInner() {
         const r = results[i];
         if (r.status === "fulfilled" && r.value) {
           const s = r.value as DoorStatus;
-          if (prev[d.id]?.guess !== s.guess || prev[d.id]?.lastHeartbeat !== s.lastHeartbeat) {
+          if (
+            prev[d.id]?.guess !== s.guess ||
+            prev[d.id]?.lastHeartbeat !== s.lastHeartbeat
+          ) {
             next[d.id] = s;
             changed = true;
           }
