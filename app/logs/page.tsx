@@ -24,6 +24,7 @@ interface LogEntry {
   keyId: string;
   uid?: string | null;
   granted: boolean;
+  accessType: "oidc" | "mobile" | "physical";
 }
 
 interface LogsResponse {
@@ -342,8 +343,8 @@ function LogsPageInner() {
                   <th style={{ width: "22%" }}>Door</th>
                   <th style={{ width: "22%" }}>Username</th>
                   <th style={{ width: "18%" }}>Name</th>
-                  <th style={{ width: "15%" }}>Keys</th>
-                  <th style={{ width: "10%" }}>Access</th>
+                  <th style={{ width: "16%" }}>Access method</th>
+                  <th style={{ width: "12%" }}>Access</th>
                 </tr>
               </thead>
               <tbody>
@@ -351,21 +352,31 @@ function LogsPageInner() {
                   <tr key={entry._id}>
                     <td style={{ whiteSpace: "nowrap" }}>{formatTimestamp(entry.timestamp)}</td>
                     <td>
-                      {entry.doorName ?? <span className="font-monospace text-muted">{entry.door}</span>}
+                      {entry.doorName ?? <span>{entry.door}</span>}
                     </td>
                     <td>
-                      {entry.username ?? <span className="text-muted">unknown</span>}
+                      {entry.username ?? <span>unknown</span>}
                     </td>
-                    <td>{entry.name ?? <span className="text-muted">-</span>}</td>
+                    <td>{entry.name ?? <span>-</span>}</td>
                     <td>
-                      {entry.keyId === null ? (
+                      {entry.accessType === "oidc" ? (
                         "Remote Access"
-                      ) : entry.uid === undefined ? (
-                        <span>-</span>
-                      ) : entry.uid === null ? (
-                        "Mobile Key"
+                      ) : entry.accessType === "mobile" ? (
+                        <div>
+                          <div>Mobile Key</div>
+                          <div style={{ fontSize: "0.70rem" }}>
+                            ({entry.keyId})
+                          </div>
+                        </div>
+                      ) : entry.accessType === "physical" ? (
+                        <div>
+                          <div>Physical Key</div>
+                          <div style={{ fontSize: "0.70rem" }}>
+                            ({entry.keyId})
+                          </div>
+                        </div>
                       ) : (
-                        <span className="font-monospace small">{entry.uid}</span>
+                        <span>-</span>
                       )}
                     </td>
                     <td>
@@ -385,7 +396,7 @@ function LogsPageInner() {
           className="card-footer d-grid align-items-center"
           style={{ gridTemplateColumns: "1fr auto 1fr" }}
         >
-          <small className="text-muted">
+          <small>
             Page {pageIndex + 1} &nbsp;
           </small>
           <div className="justify-self-center">
