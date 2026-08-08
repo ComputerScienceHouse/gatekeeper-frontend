@@ -118,6 +118,16 @@ function UserDropdown({
           </a>
         </li>
         <li>
+          <a
+            className="dropdown-item"
+            href={`https://members.csh.rit.edu/`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Members
+          </a>
+        </li>
+        <li>
           <hr className="dropdown-divider" />
         </li>
         <li>
