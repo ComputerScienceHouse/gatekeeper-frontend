@@ -80,6 +80,29 @@ function formatTimestamp(iso: string): string {
   });
 }
 
+function fetchAccessType(entry: LogEntry) {
+  switch (entry.accessType) {
+    case "oidc":
+      return "Remote Access";
+    case "mobile":
+      return (
+        <div>
+          <div>Mobile Key</div>
+          <div style={{ fontSize: "0.70rem" }}>({entry.keyId})</div>
+        </div>
+      );
+    case "physical":
+      return (
+        <div>
+          <div>Physical Key</div>
+          <div style={{ fontSize: "0.70rem" }}>({entry.keyId})</div>
+        </div>
+      );
+    default:
+      return <span>-</span>;
+  }
+}
+
 async function fetchLogs(
   token: string,
   cursor?: string,
@@ -428,27 +451,7 @@ function LogsPageInner() {
                     <td>{entry.doorName ?? <span>{entry.door}</span>}</td>
                     <td>{entry.username ?? <span>unknown</span>}</td>
                     <td>{entry.name ?? <span>-</span>}</td>
-                    <td>
-                      {entry.accessType === "oidc" ? (
-                        "Remote Access"
-                      ) : entry.accessType === "mobile" ? (
-                        <div>
-                          <div>Mobile Key</div>
-                          <div style={{ fontSize: "0.70rem" }}>
-                            ({entry.keyId})
-                          </div>
-                        </div>
-                      ) : entry.accessType === "physical" ? (
-                        <div>
-                          <div>Physical Key</div>
-                          <div style={{ fontSize: "0.70rem" }}>
-                            ({entry.keyId})
-                          </div>
-                        </div>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </td>
+                    <td>{fetchAccessType(entry)}</td>
                     <td>
                       <span
                         className={`badge rounded-pill ${entry.granted ? "text-bg-success" : "text-bg-danger"}`}
